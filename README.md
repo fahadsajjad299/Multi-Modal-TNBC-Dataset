@@ -9,7 +9,6 @@
 ---
 
 ## Overview
-## Overview
 
 This repository provides two matched cohorts derived from the TCGA-BRCA dataset (1,107 total patients via cBioPortal), each with linked open-access whole-slide pathology images from the NCI Genomic Data Commons (GDC):
 
