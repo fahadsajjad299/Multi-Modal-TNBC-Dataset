@@ -114,4 +114,4 @@ Whole-slide images: governed by [TCGA data access policies](https://www.cancer.g
 
 ## Contact
 
-Open an issue or email **fahadsajjadbioinfo@aup.edu.pk**
+Open an issue or email **fahadsajjad299@gmail.com**
