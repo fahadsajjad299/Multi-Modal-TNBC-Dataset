@@ -25,14 +25,21 @@ A curated binary-classification dataset of **153 confirmed TNBC patients** and *
 ## Repository Structure
 
 ```
-├── TNBC_Clinical_Metadata.csv       # Clinical records for 153 TNBC patients
-├── NonTNBC_Clinical_Metadata.csv    # Clinical records for 153 Luminal A patients
-├── TNBC_WSI_Linkage.csv             # Patient → WSI mapping (TNBC)
-├── NonTNBC_WSI_Linkage.csv          # Patient → WSI mapping (Luminal A)
-├── Exclusion_Audit_Log.tsv          # Every excluded patient with reason code
-├── TNBC_GDC_Manifest.txt            # GDC download manifest (TNBC WSIs)
-├── NonTNBC_GDC_Manifest.txt         # GDC download manifest (Luminal A WSIs)
-└── curation_pipeline.py             # End-to-end curation script (Google Colab ready)
+Multi-Modal-TNBC-Dataset/
+│
+├── DATA SETS/
+│   ├── brca_tcga_clinical_data from_cbioportal.tsv   # Raw TCGA-BRCA export (1,107 patients, 145 variables) — pipeline input
+│   ├── TNBC_master.csv                               # Full TNBC cohort with all clinical variables (n=153)
+│   ├── TNBC_confirmed_patients.csv                   # Final confirmed TNBC patients after all 19 filtering steps
+│   ├── TNBC_patient_slide_ids.csv                    # Patient → GDC slide UUID mapping for WSI download
+│   └── TNBC_exclusion_log.csv                        # Every excluded patient with pipeline step and reason code
+│
+├── Scripts/
+│   ├── tnbc.py                                       # TNBC cohort construction pipeline (C01–C19)
+│   └── non_tnbc.py                                   # Age-matched Luminal A control cohort construction
+│
+└── Results/
+    └── section7_outputs.zip                          # ResNet50 + UMAP + HDBSCAN embedding analysis outputs
 ```
 
 ---
@@ -43,8 +50,8 @@ WSIs are not stored here — download them from the NCI GDC (open access, no app
 
 ```bash
 # Install: https://gdc.cancer.gov/access-data/gdc-data-transfer-tool
-gdc-client download -m TNBC_GDC_Manifest.txt       -d ./TNBC_WSIs/
-gdc-client download -m NonTNBC_GDC_Manifest.txt    -d ./NonTNBC_WSIs/
+gdc-client download -m TNBC_GDC_Manifest.txt     -d ./TNBC_WSIs/
+gdc-client download -m NonTNBC_GDC_Manifest.txt  -d ./NonTNBC_WSIs/
 ```
 
 All slides are H&E-stained diagnostic sections in **Aperio SVS format**, compatible with OpenSlide, QuPath, and standard WSI libraries.
@@ -55,7 +62,7 @@ All slides are H&E-stained diagnostic sections in **Aperio SVS format**, compati
 
 ## How the Cohort Was Built
 
-Clinical data came from the full TCGA-BRCA cBioPortal export (1,107 patients). A **19-step filtering pipeline (C01–C19)** was applied to identify confirmed TNBC cases, then an age-matched Luminal A control cohort was constructed by stratified sampling across five age bins (fixed seed = 42). Every excluded patient is recorded in `Exclusion_Audit_Log.tsv` with the corresponding step and reason.
+Clinical data came from the full TCGA-BRCA cBioPortal export (`brca_tcga_clinical_data from_cbioportal.tsv`, 1,107 patients). A **19-step filtering pipeline (C01–C19)** implemented in `Scripts/tnbc.py` was applied to identify confirmed TNBC cases. An age-matched Luminal A control cohort was then constructed by `Scripts/non_tnbc.py` using stratified sampling across five age bins (fixed seed = 42). Every excluded patient is recorded in `TNBC_exclusion_log.csv` with the corresponding step and reason.
 
 Key criteria:
 - Invasive primary breast carcinoma only
@@ -70,13 +77,16 @@ Key criteria:
 ```python
 import pandas as pd
 
-tnbc    = pd.read_csv("TNBC_Clinical_Metadata.csv")
-luminal = pd.read_csv("NonTNBC_Clinical_Metadata.csv")
+# Load cohorts
+tnbc    = pd.read_csv("DATA SETS/TNBC_confirmed_patients.csv")
+# Luminal A metadata coming in next release — see Scripts/non_tnbc.py to regenerate
 
-df = pd.concat([tnbc, luminal], ignore_index=True)
-print(df["label"].value_counts())
-# 1    153
-# 0    153
+# Load WSI linkage
+slides  = pd.read_csv("DATA SETS/TNBC_patient_slide_ids.csv")
+
+# Check exclusion log
+log     = pd.read_csv("DATA SETS/TNBC_exclusion_log.csv")
+print(log["reason_code"].value_counts())
 ```
 
 ---
@@ -86,6 +96,7 @@ print(df["label"].value_counts())
 - **Labels are patient-level only.** No patch, tile, or region annotations are provided.
 - **Luminal A is "pure"** (ER+/PR+/HER2−). Do not assume models trained here generalise to Luminal B, HER2-enriched, or basal-like subtypes.
 - **Multi-site data.** WSIs come from 22 source sites (TNBC) and 18 (Luminal A) — consider site-level batch effects in your pipeline.
+- **Embedding outputs** in `Results/section7_outputs.zip` are exploratory (ResNet50 + UMAP + HDBSCAN on 27-patient subset). Cluster/failure labels are not expert-validated.
 
 ---
 
